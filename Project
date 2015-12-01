@@ -1,0 +1,279 @@
+unit Halstead;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Grids, Math;
+
+type
+    TStates = array[1..10] of string;
+    strarr = array of string;
+    TForm1 = class(TForm)
+    Button1: TButton;
+    Label1: TLabel;
+    StringGrid1: TStringGrid;
+    Edit1: TEdit;
+    Edit2: TEdit;
+    Edit3: TEdit;
+    Edit4: TEdit;
+    OpenDialog1: TOpenDialog;
+    Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
+    Label5: TLabel;
+    Label6: TLabel;
+    Label7: TLabel;
+    Label8: TLabel;
+    Edit5: TEdit;
+    Edit6: TEdit;
+    Edit7: TEdit;
+    Label9: TLabel;
+    Button2: TButton;
+    OpenDialog2: TOpenDialog;
+    procedure Button1Click(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+const
+Indifik: TStates =('bool', 'char', 'double', 'float', 'int',
+                   'long', 'short', 'signed', 'unsigned', 'void');
+implementation
+
+{$R *.dfm}
+
+function FindStrInMas(const Mas: strarr; Str: String): integer;
+var
+i,b: integer;
+begin
+b:=0;
+for i:=Low(Mas)to High(mas) do
+  if AnsiSameStr(Mas[i],Str) then b:=i;
+Result:=b;
+end;
+
+
+procedure MasSlov(var mas: strarr; Text: String);
+var
+i: integer;
+S: String;
+begin
+  SetLength(mas,0) ;
+  i:=1;
+  while i < (Length(Text)+1) do
+  begin
+     if (Text[i]<>' ')and(Text[i]<>'[')and(Text[i]<>']')and
+       (Text[i]<>'(')and(Text[i]<>')')and(Text[i]<>',')and(Text[i]<>'}')and(Text[i]<>'{')
+       then
+       begin
+       while (Text[i]<>' ')and(Text[i]<>'[')and(Text[i]<>']')and
+             (Text[i]<>'(')and(Text[i]<>')')and(Text[i]<>',')and(Text[i]<>'}')and(Text[i]<>'{') do
+         begin
+         S:=S+Text[i];
+         i:= i+1;
+         end;
+       SetLength(mas,High(mas)+2);
+       mas[High(mas)]:=S;
+       S:='';
+       end
+       else
+     i:=i+1;
+  end;
+end;
+
+
+function FindStr(FileNm, Text: String): integer;
+var
+f: TStrings;
+N,i,k: integer;
+S: String;
+begin
+  N:=0;
+  f:= Tstringlist.Create();
+  f.LoadFromFile(FileNm);
+  for i:=0 to f.Count-1 do
+  begin
+
+      S:= f.Strings[i];
+      k:= Pos('//',S);
+      if k > 0 then Delete(S,k,Length(S)-k+1);
+
+      k:= Pos(Text,S);
+      while k > 0 do
+
+            begin
+             N:=N+1;
+             Delete(S,k,Length(Text));
+             Insert(' ',S,k);
+             k:= Pos(Text,S);
+            end;
+      f.Strings[i]:=S;
+  end;
+
+ f.SaveToFile(FileNm);
+  f.Free;
+  Result:=N;
+end;
+
+
+procedure TForm1.Button1Click(Sender: TObject);
+
+var
+e:Extended;
+fSlovar: TextFile;
+MasSl,SlovOpr,IndfSl:strarr;
+Operator,Operand: array[1..2] of strarr;
+fTemp,Str,SlovarOperatots: String;
+K,i,j,p,t1,t2,N1,N2,m1,m2: integer;
+OprSp:Tstringlist;
+
+begin
+
+   OpenDialog1.Title := 'Выберите файл';
+   if OpenDialog1.Execute then
+   begin
+   Label1.Caption := OpenDialog1.FileName;
+   fTemp:= Label1.Caption+'temp';
+   CopyFile(PChar(Label1.Caption),PChar(fTemp), FALSE);
+
+   if Label9.Caption = '' then  Label9.Caption:= ExtractFileDir(Application.ExeName)+'\Operators.txt' ;
+   OprSp:= Tstringlist.Create();
+   OprSp.Sorted:=True;
+   OprSp.LoadFromFile(Label9.Caption);
+   j:=1;
+   p:=0;
+   for i:=OprSp.Count downto 1 do
+     begin
+     K := FindStr(fTemp,OprSp.Strings[OprSp.Count-j]);
+     if K > 0 then
+        begin
+        SetLength(Operator[1],p+1) ;
+        SetLength(Operator[2],p+1) ;
+        Operator[1,p]:= OprSp.Strings[OprSp.Count-j];
+        Operator[2,p]:= IntToStr(K);
+        m1:=m1+1;
+        N1:=N1+K;
+        p:=p+1;
+        end;
+     j:=j+1;
+     end;
+   OprSp.Free;
+
+
+  SetLength(IndfSl,High(Indifik)+1) ;
+  for i:=Low(Indifik) to High(Indifik) do
+      IndfSl[i]:=Indifik[i];
+
+   AssignFile(fSlovar,fTemp);
+   Reset(fSlovar);
+   while not Eof(fSlovar) do
+     begin
+     Readln(fSlovar,Str);
+     MasSlov(MasSl,Str);
+     if Length(MasSl) = 0 then Continue;
+     if  FindStrInMas(IndfSl,MasSl[0])>0 then
+          begin
+             for i:=Low(MasSl)+1 to High(MasSl) do
+             if  FindStrInMas(IndfSl,MasSl[i])=0 then
+             begin
+                j:=FindStrInMas(Operand[1],MasSl[i]);
+                if j=0 then
+                   begin
+                   SetLength(Operand[1],High(Operand[1])+2) ;
+                   SetLength(Operand[2],High(Operand[2])+2) ;
+                   Operand[1,High(Operand[1])]:=MasSl[i];
+                   Operand[2,High(Operand[2])]:='1';
+                   m2:=m2+1;
+                   N2:=N2+1;
+                   end
+                   else
+                   begin
+                     Operand[2,j]:=IntToStr(StrToInt(Operand[2,j])+1);
+                     N2:=N2+1;
+                   end;
+             end;
+
+          end
+
+          else
+          begin
+             for i:=Low(MasSl) to High(MasSl) do
+             begin
+             j:=FindStrInMas(Operand[1],MasSl[i]);
+             if  j>0 then
+                 begin
+                 Operand[2,j]:=IntToStr(StrToInt(Operand[2,j])+1);
+                 N2:=N2+1 ;
+                 end
+                 else
+                 begin
+                    Val(MasSl[i],t1,t2);
+                    if t2=0 then
+                    begin
+                      SetLength(Operand[1],High(Operand[1])+2) ;
+                      SetLength(Operand[2],High(Operand[2])+2) ;
+                      Operand[1,High(Operand[1])]:=MasSl[i];
+                      Operand[2,High(Operand[2])]:='1';
+                      m2:=m2+1;
+                      N2:=N2+1;
+                    end;
+                 end;
+             end;
+          end;
+           
+     end;
+  CloseFile(fSlovar);
+  DeleteFile(fTemp);
+
+  for i:=1 to 60 do
+  begin
+    StringGrid1.Cells[0,i]:='';
+    StringGrid1.Cells[1,i]:='';
+    StringGrid1.Cells[2,i]:='';
+    StringGrid1.Cells[3,i]:='';
+    StringGrid1.Cells[4,i]:='';
+  end;
+  StringGrid1.Cells[0,0]:= '¹';
+  StringGrid1.Cells[1,0]:= 'Оператор';
+  StringGrid1.Cells[2,0]:= 'N';
+  StringGrid1.Cells[3,0]:= 'Операнд';
+  StringGrid1.Cells[4,0]:= 'N';
+  for i:=0 to (Length(Operator[1])-1) do
+     begin
+       StringGrid1.Cells[0,i+1]:= IntToStr(i+1);
+       StringGrid1.Cells[1,i+1]:= Operator[1,i];
+       StringGrid1.Cells[2,i+1]:= Operator[2,i];
+     end;
+  for i:=0 to (Length(Operand[1])-1) do
+     begin
+       StringGrid1.Cells[0,i+1]:= IntToStr(i+1);
+       StringGrid1.Cells[3,i+1]:= Operand[1,i];
+       StringGrid1.Cells[4,i+1]:= Operand[2,i];
+     end;
+
+
+   Edit1.Text := IntToStr(m1);
+   Edit2.Text := IntToStr(m2);
+   Edit3.Text := IntToStr(N1);
+   Edit4.Text := IntToStr(N2);
+   Edit5.Text := IntToStr(m1+m2);
+   Edit6.Text := IntToStr(N1+N2);
+   e:= m1+m2;
+   Edit7.Text := FloatToStr((N1+N2)*Log2(e));
+   end;
+end;
+
+procedure TForm1.Button2Click(Sender: TObject);
+begin
+      OpenDialog2.Title := 'Выберите файл';
+        if OpenDialog2.Execute then
+         Label9.Caption :=OpenDialog2.FileName;
+end;
+
+end.
